@@ -62,6 +62,11 @@ Program::Program(const char *filename) throw(SyntaxError)
         }
         else if(instr == "dat")
             cell.instr = DAT;
+        else
+        {
+            throw SyntaxError(QObject::tr("%1:%2: unknown instruction!")
+                .arg(filename).arg(line_number));
+        }
 
         if(cell.instr == DAT)
         {

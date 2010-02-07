@@ -30,7 +30,7 @@ Corewar::Corewar()
     connect(m_pTickTimer, SIGNAL(timeout()), this, SLOT(tick()));
     m_pPaintTimer = new QTimer(this);
     m_pPaintTimer->setSingleShot(false);
-    m_pPaintTimer->setInterval(500);
+    m_pPaintTimer->setInterval(100);
     connect(m_pPaintTimer, SIGNAL(timeout()), this, SLOT(repaint()));
 }
 
@@ -39,6 +39,7 @@ void Corewar::newGame(unsigned int size, QStringList programs)
     // Free the memory
     for(int i = 0; i < m_lProcesses.size(); i++)
         delete m_lProcesses.at(i);
+    m_lProcesses.clear();
 
     QList<Program*> compiled;
 
@@ -119,7 +120,7 @@ unsigned int Corewar::findCell(EOpType type, int op, unsigned int ip)
         return (op + ip) % m_pField->length();
         break;
     case DEREFERENCE:
-        op = readValue(ADDRESS, (op + ip) % m_pField->length(), ip);
+        op = readValue(ADDRESS, op, ip);
         return (op + ip) % m_pField->length();
         break;
     }
@@ -167,6 +168,8 @@ void Corewar::mov(EOpType type1, int op1, EOpType type2, int op2,
 
 void Corewar::tick()
 {
+    m_pField->clearPointers();
+
     unsigned int running = 0;
     bool finished = true;
     for(int i = 0; i < m_lProcesses.count(); i++)
@@ -174,7 +177,7 @@ void Corewar::tick()
         if(!m_lProcesses.at(i)->running)
             continue;
 
-        unsigned int ip = m_lProcesses.at(i)->instructionPointer;
+        unsigned int &ip = m_lProcesses.at(i)->instructionPointer;
         // The real owner is the owner of the cell we are executing
         unsigned short owner = m_pField->owner(ip);
 
@@ -211,7 +214,7 @@ void Corewar::tick()
                     // SUB to a constant : fail ;-)
                     m_lProcesses.at(i)->running = false;
                 int value = readValue(cell.type1, cell.op1, ip);
-                value += readValue(cell.type2, cell.op2, ip);
+                value -= readValue(cell.type2, cell.op2, ip);
                 writeValue(cell.type2, cell.op2, ip, value, owner);
             }
             break;
@@ -232,7 +235,7 @@ void Corewar::tick()
                     ; // Executes the next line
                 else
                     // Jump over next line
-                    m_lProcesses.at(i)->instructionPointer++;
+                    ip++;
             }
             break;
         case IFL:
@@ -243,30 +246,39 @@ void Corewar::tick()
                     ; // Executes the next line
                 else
                     // Jump over next line
-                    m_lProcesses.at(i)->instructionPointer++;
+                    ip++;
             }
             break;
         case JMP:
             switch(cell.type1)
             {
             case IMMEDIATE:
-                // Jump to a constant : fail ;-)
+                // JMP to a constant : fail ;-)
                 m_lProcesses.at(i)->running = false;
                 break;
             case ADDRESS:
-                m_lProcesses.at(i)->instructionPointer += readValue(IMMEDIATE,
-                    cell.op1, ip) - 1;
+                {
+                    int value = readValue(IMMEDIATE, cell.op1, ip) - 1;
+                    ip += value % m_pField->length();
+                }
                 break;
             case DEREFERENCE:
-                m_lProcesses.at(i)->instructionPointer += readValue(ADDRESS,
-                    cell.op1, ip) - 1;
+                {
+                    int value = readValue(ADDRESS, cell.op1, ip) - 1;
+                    ip += value % m_pField->length();
+                }
+                break;
             }
         }
 
         // Next instruction
-        m_lProcesses.at(i)->instructionPointer++;
+        ip = (ip+1)%m_pField->length();
+
+        // Draw instruction pointers
+        m_pField->drawPointer(ip, m_lProcesses.at(i)->owner);
     }
 
+    // Less than 2 running programs : the end!
     if(finished)
     {
         m_pTickTimer->stop();
@@ -338,11 +350,11 @@ void NewGameDialog::removeProgram()
 
 void NewGameDialog::submit()
 {
+    hide();
     QStringList programs;
     for(int i = 0; i < m_pProgramList->count(); i++)
         programs << m_pProgramList->item(i)->text();
     emit newGame(m_pSize->value(), programs);
-    hide();
 }
 
 int main(int argc, char **argv)

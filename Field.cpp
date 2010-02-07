@@ -30,6 +30,17 @@ Field::Field(unsigned int size)
     }
 }
 
+void Field::drawPointer(unsigned int pointer, unsigned short owner)
+{
+    Pointer p = {pointer, owner};
+    m_lPointers << p;
+}
+
+void Field::clearPointers()
+{
+    m_lPointers.clear();
+}
+
 void Field::paintEvent(QPaintEvent *event)
 {
     QPainter painter(this);
@@ -40,7 +51,17 @@ void Field::paintEvent(QPaintEvent *event)
         {
             unsigned char *color = colors[m_aCellsOwner[y*m_iWidth + x]];
             painter.setBrush(QColor(color[0], color[1], color[2]));
-            painter.drawRect(QRect(x*10, y*10, (x+1)*10, (y+1)*10));
+            painter.drawRect(QRect(x*10, y*10, 10, 10));
         }
+    }
+
+    painter.setBrush(Qt::NoBrush);
+    for(int i = 0; i < m_lPointers.count(); i++)
+    {
+        unsigned char *color = colors[m_lPointers.at(i).owner];
+        painter.setPen(QColor(color[0], color[1], color[2]));
+        unsigned int y = m_lPointers.at(i).pointer/m_iWidth;
+        unsigned int x = m_lPointers.at(i).pointer - y*m_iWidth;
+        painter.drawRect(QRect(x*10, y*10, 10, 10));
     }
 }

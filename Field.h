@@ -11,11 +11,18 @@ class Field : public QWidget {
     Q_OBJECT
 
 private:
+    struct Pointer {
+        unsigned int pointer;
+        unsigned short owner;
+    };
+
+private:
     unsigned int m_iWidth;
     unsigned int m_iHeight;
     unsigned int m_iSize;
     std::vector<Cell> m_aCells;
     std::vector<unsigned short> m_aCellsOwner;
+    QList<Pointer> m_lPointers;
 
 public:
     Field(unsigned int size);
@@ -31,6 +38,8 @@ public:
     {
         return m_iSize;
     }
+    void clearPointers();
+    void drawPointer(unsigned int pointer, unsigned short owner);
 
 protected:
     void paintEvent(QPaintEvent *event);
