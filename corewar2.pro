@@ -12,5 +12,5 @@ CONFIG += release
 DESTDIR = ./
 
 # Input
-HEADERS += Corewar.h Program.h
-SOURCES += Corewar.cpp Program.cpp
+HEADERS += Corewar.h Program.h Field.h
+SOURCES += Corewar.cpp Program.cpp Field.cpp
