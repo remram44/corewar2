@@ -8,6 +8,7 @@
 #include <QLabel>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QTranslator>
 
 Corewar::Corewar()
 {
@@ -360,7 +361,13 @@ void NewGameDialog::submit()
 int main(int argc, char **argv)
 {
     QApplication app(argc, argv);
+
+    QTranslator translator;
+    translator.load(QString("corewar2_") + QLocale::system().name());
+    app.installTranslator(&translator);
+
     Corewar cw;
     cw.show();
+
     return app.exec();
 }

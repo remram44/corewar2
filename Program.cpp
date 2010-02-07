@@ -74,7 +74,7 @@ Program::Program(const char *filename) throw(SyntaxError)
             b = line.find_first_not_of(" \t", e);
             if(b == std::string::npos)
             {
-                throw SyntaxError(QObject::tr("%1:%2: missing value of dat")
+                throw SyntaxError(QObject::tr("%1:%2: missing value of DAT")
                     .arg(filename).arg(line_number));
             }
             e = line.find_first_of(" \t", b);
@@ -85,7 +85,7 @@ Program::Program(const char *filename) throw(SyntaxError)
             if(iss.eof() || (iss >> value, false) || iss.fail() || !iss.eof())
             {
                 throw SyntaxError(QObject::tr("%1:%2: incorrect operand value "
-                    "for dat").arg(filename).arg(line_number));
+                    "for DAT").arg(filename).arg(line_number));
             }
             cell.op1 = value;
         }
@@ -97,7 +97,7 @@ Program::Program(const char *filename) throw(SyntaxError)
             b = line.find_first_not_of(" \t", e);
             if(b == std::string::npos)
             {
-                throw SyntaxError(QObject::tr("%1:%2: missing operand %3\n")
+                throw SyntaxError(QObject::tr("%1:%2: missing operand %3")
                     .arg(filename).arg(line_number).arg(i));
             }
             e = line.find_first_of(" \t", b);

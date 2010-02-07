@@ -14,3 +14,6 @@ DESTDIR = ./
 # Input
 HEADERS += Corewar.h Program.h Field.h
 SOURCES += Corewar.cpp Program.cpp Field.cpp
+
+TRANSLATIONS = corewar2_fr.ts
+CODECFORTR = ISO-8859-1
