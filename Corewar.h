@@ -7,6 +7,7 @@
 #include <QDialog>
 #include <QListWidget>
 #include <QSpinBox>
+#include <QCheckBox>
 #include <QTimer>
 
 class Corewar;
@@ -18,6 +19,7 @@ class NewGameDialog : public QDialog {
 private:
     QListWidget *m_pProgramList;
     QSpinBox *m_pSize;
+    QCheckBox *m_pForkAllowed;
 
 public:
     NewGameDialog(Corewar *cw);
@@ -28,7 +30,7 @@ private slots:
     void submit();
 
 signals:
-    void newGame(unsigned int size, QStringList programs);
+    void newGame(unsigned int size, QStringList programs, bool forkAllowed);
 
 };
 
@@ -64,7 +66,7 @@ public:
     Corewar();
 
 private slots:
-    void newGame(unsigned int size, QStringList programs);
+    void newGame(unsigned int size, QStringList programs, bool forkAllowed);
     void tick();
 
 };

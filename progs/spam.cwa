@@ -1,0 +1,8 @@
+add $128 #5
+add $128 #5
+mov #5 @3
+fork @3
+jmp #-4
+dat 4
+dat 3
+mov #0 #1

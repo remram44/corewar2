@@ -14,8 +14,8 @@ Corewar::Corewar()
 {
     setWindowTitle(tr("Corewar"));
     m_pNewGameDialog = new NewGameDialog(this);
-    connect(m_pNewGameDialog, SIGNAL(newGame(unsigned int, QStringList)),
-        this, SLOT(newGame(unsigned int, QStringList)));
+    connect(m_pNewGameDialog, SIGNAL(newGame(unsigned int, QStringList, bool)),
+        this, SLOT(newGame(unsigned int, QStringList, bool)));
     {
         QMenu *file = menuBar()->addMenu(tr("&Game"));
         connect(file->addAction(tr("&New game...")), SIGNAL(triggered()),
@@ -35,7 +35,7 @@ Corewar::Corewar()
     connect(m_pPaintTimer, SIGNAL(timeout()), this, SLOT(repaint()));
 }
 
-void Corewar::newGame(unsigned int size, QStringList programs)
+void Corewar::newGame(unsigned int size, QStringList programs, bool forkAllowed)
 {
     // Free the memory
     for(int i = 0; i < m_lProcesses.size(); i++)
@@ -47,7 +47,7 @@ void Corewar::newGame(unsigned int size, QStringList programs)
     // Load each program
     try {
         for(int i = 0; i < programs.size(); i++)
-            compiled << new Program(programs.at(i).toLocal8Bit());
+            compiled << new Program(programs.at(i).toLocal8Bit(), forkAllowed);
     }
     catch(SyntaxError &e)
     {
@@ -200,22 +200,17 @@ void Corewar::tick()
             m_lProcesses.at(i)->running = false;
             break;
         case ADD:
-            {
-                if(cell.type2 == IMMEDIATE)
-                    // ADD to a constant : fail ;-)
-                    m_lProcesses.at(i)->running = false;
-                int value = readValue(cell.type1, cell.op1, ip);
-                value += readValue(cell.type2, cell.op2, ip);
-                writeValue(cell.type2, cell.op2, ip, value, owner);
-            }
-            break;
         case SUB:
             {
                 if(cell.type2 == IMMEDIATE)
-                    // SUB to a constant : fail ;-)
+                    // ADD or SUB to a constant : fail ;-)
                     m_lProcesses.at(i)->running = false;
                 int value = readValue(cell.type2, cell.op2, ip);
-                value -= readValue(cell.type1, cell.op1, ip);
+                int val2 = readValue(cell.type1, cell.op1, ip);
+                if(cell.instr == ADD)
+                    value += val2;
+                else
+                    value -= val2;
                 writeValue(cell.type2, cell.op2, ip, value, owner);
             }
             break;
@@ -229,21 +224,12 @@ void Corewar::tick()
             }
             break;
         case IFE:
-            {
-                int val1 = readValue(cell.type1, cell.op1, ip);
-                int val2 = readValue(cell.type2, cell.op2, ip);
-                if(val1 == val2)
-                    ; // Executes the next line
-                else
-                    // Jump over next line
-                    ip++;
-            }
-            break;
         case IFL:
             {
                 int val1 = readValue(cell.type1, cell.op1, ip);
                 int val2 = readValue(cell.type2, cell.op2, ip);
-                if(val1 < val2)
+                if( (val1 == val2 && cell.instr == IFE)
+                 || (val1  < val2 && cell.instr == IFL) )
                     ; // Executes the next line
                 else
                     // Jump over next line
@@ -251,32 +237,47 @@ void Corewar::tick()
             }
             break;
         case JMP:
-            switch(cell.type1)
+        case FORK:
             {
-            case IMMEDIATE:
-                // JMP to a constant : fail ;-)
-                m_lProcesses.at(i)->running = false;
-                break;
-            case ADDRESS:
+                int value;
+                switch(cell.type1)
                 {
-                    int value = readValue(IMMEDIATE, cell.op1, ip) - 1;
-                    ip += value % m_pField->length();
+                case IMMEDIATE:
+                    // JMP or FORK to a constant : fail ;-)
+                    m_lProcesses.at(i)->running = false;
+                    continue;
+                    break;
+                case ADDRESS:
+                    value = readValue(IMMEDIATE, cell.op1, ip);
+                    break;
+                case DEREFERENCE:
+                    value = readValue(ADDRESS, cell.op1, ip);
+                    break;
                 }
-                break;
-            case DEREFERENCE:
+
+                if(cell.instr == JMP)
+                    ip = (ip+value-1) % m_pField->length();
+                else
                 {
-                    int value = readValue(ADDRESS, cell.op1, ip) - 1;
-                    ip += value % m_pField->length();
+                    Process *proc = new Process;
+                    proc->instructionPointer = (ip+value) % m_pField->length();
+                    proc->owner = owner;
+                    proc->running = true;
+                    proc->name = m_lProcesses.at(i)->name;
+                    m_lProcesses.prepend(proc); i++;
                 }
-                break;
             }
+            break;
         }
 
-        // Next instruction
-        ip = (ip+1)%m_pField->length();
+        if(m_lProcesses.at(i)->running)
+        {
+            // Next instruction
+            ip = (ip+1)%m_pField->length();
 
-        // Draw instruction pointers
-        m_pField->drawPointer(ip, m_lProcesses.at(i)->owner);
+            // Draw instruction pointers
+            m_pField->drawPointer(ip, m_lProcesses.at(i)->owner);
+        }
     }
 
     // Less than 2 running programs : the end!
@@ -319,6 +320,14 @@ NewGameDialog::NewGameDialog(Corewar *cw)
                 l4->addWidget(m_pSize);
                 l3->addLayout(l4);
             }
+            {
+                QHBoxLayout *l4 = new QHBoxLayout;
+                l4->addWidget(new QLabel(tr("FORK allowed?")));
+                m_pForkAllowed = new QCheckBox;
+                m_pForkAllowed->setCheckState(Qt::Checked);
+                l4->addWidget(m_pForkAllowed);
+                l3->addLayout(l4);
+            }
             l2->addLayout(l3);
         }
         l->addLayout(l2);
@@ -355,7 +364,8 @@ void NewGameDialog::submit()
     QStringList programs;
     for(int i = 0; i < m_pProgramList->count(); i++)
         programs << m_pProgramList->item(i)->text();
-    emit newGame(m_pSize->value(), programs);
+    emit newGame(m_pSize->value(), programs,
+        m_pForkAllowed->checkState()==Qt::Checked);
 }
 
 int main(int argc, char **argv)

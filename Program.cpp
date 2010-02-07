@@ -16,7 +16,7 @@ const QString &SyntaxError::what() const
     return m_sWhat;
 }
 
-Program::Program(const char *filename) throw(SyntaxError)
+Program::Program(const char *filename, bool forkAllowed) throw(SyntaxError)
 {
     // TODO : loading a program
     std::ifstream file(filename, std::ios::in);
@@ -27,7 +27,7 @@ Program::Program(const char *filename) throw(SyntaxError)
     {
         // Remove the commentary
         {
-            size_t com = line.rfind(';');
+            size_t com = line.find_first_of(";:");
             if(com != std::string::npos)
                 line = line.substr(0, com);
         }
@@ -62,6 +62,16 @@ Program::Program(const char *filename) throw(SyntaxError)
         }
         else if(instr == "dat")
             cell.instr = DAT;
+        else if(instr == "fork")
+        {
+            cell.instr = FORK;
+            if(!forkAllowed)
+            {
+                throw SyntaxError(QObject::tr("%1:%2: FORK instruction is not "
+                    "allowed").arg(filename).arg(line_number));
+            }
+            nb_ops = 1;
+        }
         else
         {
             throw SyntaxError(QObject::tr("%1:%2: unknown instruction!")
