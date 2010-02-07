@@ -1,10 +1,20 @@
 #include "Program.h"
-#include <iostream>
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <algorithm>
 #include <cctype>
+#include <QObject>
+
+SyntaxError::SyntaxError(const QString &w)
+  : m_sWhat(w)
+{
+}
+
+const QString &SyntaxError::what() const
+{
+    return m_sWhat;
+}
 
 Program::Program(const char *filename) throw(SyntaxError)
 {
@@ -36,35 +46,56 @@ Program::Program(const char *filename) throw(SyntaxError)
             (int (*)(int))std::tolower);
         unsigned int nb_ops = 2;
         if(instr == "add")
-            cell.instruction.instr = ADD;
+            cell.instr = ADD;
         else if(instr == "sub")
-            cell.instruction.instr = SUB;
+            cell.instr = SUB;
         else if(instr == "mov")
-            cell.instruction.instr = MOV;
+            cell.instr = MOV;
         else if(instr == "ife")
-            cell.instruction.instr = IFE;
+            cell.instr = IFE;
         else if(instr == "ifl")
-            cell.instruction.instr = IFL;
+            cell.instr = IFL;
         else if(instr == "jmp")
         {
-            cell.instruction.instr = JMP;
+            cell.instr = JMP;
             nb_ops = 1;
         }
+        else if(instr == "dat")
+            cell.instr = DAT;
 
-        // Read the operands
-        unsigned int i;
-        for(i = 1; i <= nb_ops; i++)
+        if(cell.instr == DAT)
         {
+            // Read the value
+            b = line.find_first_not_of(" \t", e);
+            if(b == std::string::npos)
+            {
+                throw SyntaxError(QObject::tr("%1:%2: missing value of dat")
+                    .arg(filename).arg(line_number));
+            }
+            e = line.find_first_of(" \t", b);
+            if(e == std::string::npos)
+                e = line.size();
+            std::istringstream iss(line.substr(b, e-b));
+            int value;
+            if(iss.eof() || (iss >> value, false) || iss.fail() || !iss.eof())
+            {
+                throw SyntaxError(QObject::tr("%1:%2: incorrect operand value "
+                    "for dat").arg(filename).arg(line_number));
+            }
+            cell.op1 = value;
+        }
+        else for(unsigned int i = 1; i <= nb_ops; i++)
+        {
+            // Read the operands
             EOpType type;
             int value;
             b = line.find_first_not_of(" \t", e);
             if(b == std::string::npos)
             {
-                std::cerr << filename << ":" << line_number
-                    << ": missing operand " << i << "\n";
-                throw SyntaxError();
+                throw SyntaxError(QObject::tr("%1:%2: missing operand %3\n")
+                    .arg(filename).arg(line_number).arg(i));
             }
-            e = line.find_first_not_of(" \t", b);
+            e = line.find_first_of(" \t", b);
             if(e == std::string::npos)
                 e = line.size();
             switch(line[b])
@@ -79,29 +110,27 @@ Program::Program(const char *filename) throw(SyntaxError)
                 type = DEREFERENCE;
                 break;
             default:
-                std::cerr << filename << ":" << line_number
-                    << ": missing operand type for operand " << i << "\n";
-                throw SyntaxError();
+                throw SyntaxError(QObject::tr("%1:%2: missing operand type for "
+                    "operand %3").arg(filename).arg(line_number).arg(i));
                 break;
             }
             std::istringstream iss(line.substr(b+1, e-b-1));
             if(iss.eof() || (iss >> value, false) || iss.fail() || !iss.eof())
             {
-                std::cerr << filename << ":" << line_number
-                    << ": missing operand value for operand " << i << "\n";
-                throw SyntaxError();
+                throw SyntaxError(QObject::tr("%1:%2: incorrect operand value "
+                    "for operand %3").arg(filename).arg(line_number).arg(i));
             }
             if(i == 1)
             {
-                cell.instruction.type1 = type;
-                cell.instruction.op1 = value;
+                cell.type1 = type;
+                cell.op1 = value;
             }
             else
             {
-                cell.instruction.type2 = type;
-                cell.instruction.op2 = value;
+                cell.type2 = type;
+                cell.op2 = value;
             }
         }
-        bytecode.push_back(cell);
+        m_aBytecode.push_back(cell);
     }
 }

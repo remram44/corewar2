@@ -14,10 +14,23 @@ private:
     unsigned int m_iWidth;
     unsigned int m_iHeight;
     unsigned int m_iSize;
-    std::vector<unsigned short> m_aCells;
+    std::vector<Cell> m_aCells;
+    std::vector<unsigned short> m_aCellsOwner;
 
 public:
     Field(unsigned int size);
+    inline Cell &cell(unsigned int pos)
+    {
+        return m_aCells[pos];
+    }
+    inline unsigned short &owner(unsigned int pos)
+    {
+        return m_aCellsOwner[pos];
+    }
+    inline unsigned int length() const
+    {
+        return m_iSize;
+    }
 
 protected:
     void paintEvent(QPaintEvent *event);
