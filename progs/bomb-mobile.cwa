@@ -1,0 +1,10 @@
+mov $-2 #8 ; start: source = start
+mov $60 #8 ; target = 60
+mov @6 @7  ; copy: *target = *source
+add $1 #5  ; source++
+add $1 #5  ; target++
+ife #3 $6  ; if(source == 6)
+jmp #56    ;     goto 60
+jmp #-5    ; goto copy
+; source
+; target

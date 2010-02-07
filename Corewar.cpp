@@ -214,8 +214,8 @@ void Corewar::tick()
                 if(cell.type2 == IMMEDIATE)
                     // SUB to a constant : fail ;-)
                     m_lProcesses.at(i)->running = false;
-                int value = readValue(cell.type1, cell.op1, ip);
-                value -= readValue(cell.type2, cell.op2, ip);
+                int value = readValue(cell.type2, cell.op2, ip);
+                value -= readValue(cell.type1, cell.op1, ip);
                 writeValue(cell.type2, cell.op2, ip, value, owner);
             }
             break;
