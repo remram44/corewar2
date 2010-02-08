@@ -38,16 +38,17 @@ Corewar::Corewar()
 void Corewar::newGame(unsigned int size, QStringList programs, bool forkAllowed)
 {
     // Free the memory
-    for(int i = 0; i < m_lProcesses.size(); i++)
-        delete m_lProcesses.at(i);
-    m_lProcesses.clear();
+    for(size_t i = 0; i < m_aProcesses.size(); i++)
+        delete m_aProcesses[i];
+    m_aProcesses.clear();
 
-    QList<Program*> compiled;
+    std::list<Program*> compiled;
 
     // Load each program
     try {
         for(int i = 0; i < programs.size(); i++)
-            compiled << new Program(programs.at(i).toLocal8Bit(), forkAllowed);
+            compiled.push_back(
+                new Program(programs.at(i).toLocal8Bit(), forkAllowed));
     }
     catch(SyntaxError &e)
     {
@@ -61,8 +62,11 @@ void Corewar::newGame(unsigned int size, QStringList programs, bool forkAllowed)
 
     // The total space between programs in memory
     double space = size;
-    for(int i = 0; i < compiled.size(); i++)
-        space -= compiled.at(i)->bytecode().size();
+    {
+        std::list<Program*>::iterator code = compiled.begin();
+        for(; code != compiled.end(); code++)
+            space -= (*code)->bytecode().size();
+    }
     if(space < 0.0)
     {
         QMessageBox::warning(this, tr("Error setting up memory"),
@@ -77,17 +81,17 @@ void Corewar::newGame(unsigned int size, QStringList programs, bool forkAllowed)
 
     // Copy all programs in memory, regularily spaced
     double pos = 0;
-    for(int i = 0; i < compiled.size(); i++)
+    std::list<Program*>::iterator code = compiled.begin();
+    int i = 0;
+    for(; code != compiled.end(); code++, i++)
     {
-        const std::vector<Cell> &bytecode = compiled.at(i)->bytecode();
+        const std::vector<Cell> &bytecode = (*code)->bytecode();
         unsigned int start = (unsigned int)pos;
         Process *proc = new Process;
-        proc->instructionPointer = start;
-        proc->owner = i+1;
-        proc->running = true;
+        proc->instructionPointers.push_back(start);
         QFileInfo fi(programs.at(i));
-        proc->name = fi.baseName();
-        m_lProcesses << proc;
+        proc->name = fi.baseName().toStdString();
+        m_aProcesses.push_back(proc);
         for(unsigned int j = 0; j < bytecode.size(); j++)
         {
             m_pField->cell(start+j) = bytecode[j];
@@ -101,8 +105,9 @@ void Corewar::newGame(unsigned int size, QStringList programs, bool forkAllowed)
     m_pPaintTimer->start();
 
     // Free the memory
-    for(int i = 0; i < compiled.size(); i++)
-        delete compiled.at(i);
+    code = compiled.begin();
+    for(; code != compiled.end(); code++)
+        delete *code;
 }
 
 unsigned int Corewar::findCell(EOpType type, int op, unsigned int ip)
@@ -171,40 +176,34 @@ void Corewar::tick()
 {
     m_pField->clearPointers();
 
-    unsigned int running = 0;
-    bool finished = true;
-    for(int i = 0; i < m_lProcesses.count(); i++)
+    for(size_t i = 0; i < m_aProcesses.size(); i++)
     {
-        if(!m_lProcesses.at(i)->running)
+        // No more threads -- this process has lost
+        if(m_aProcesses[i]->instructionPointers.size() == 0)
             continue;
 
-        unsigned int &ip = m_lProcesses.at(i)->instructionPointer;
+        // We take the first thread from the list
+        // If it is still running then, we will add it to the end of the list at
+        // the end of this loop
+        unsigned int ip = m_aProcesses[i]->instructionPointers.front();
+        m_aProcesses[i]->instructionPointers.pop_front();
+
         // The real owner is the owner of the cell we are executing
         unsigned short owner = m_pField->owner(ip);
-
-        // finished is true until we find two running processes with different
-        // owners
-        if(finished)
-        {
-            if(running == 0)
-                running = owner;
-            else if(owner != running)
-                finished = false;
-        }
 
         Cell &cell = m_pField->cell(ip);
         switch(cell.instr)
         {
         case DAT:
             // Executing a DAT : fail ;-)
-            m_lProcesses.at(i)->running = false;
+            continue;
             break;
         case ADD:
         case SUB:
             {
                 if(cell.type2 == IMMEDIATE)
                     // ADD or SUB to a constant : fail ;-)
-                    m_lProcesses.at(i)->running = false;
+                    continue;
                 int value = readValue(cell.type2, cell.op2, ip);
                 int val2 = readValue(cell.type1, cell.op1, ip);
                 if(cell.instr == ADD)
@@ -219,7 +218,7 @@ void Corewar::tick()
             {
                 if(cell.type2 == IMMEDIATE)
                     // MOV to a constant : fail ;-)
-                    m_lProcesses.at(i)->running = false;
+                    continue;
                 mov(cell.type1, cell.op1, cell.type2, cell.op2, ip, owner);
             }
             break;
@@ -244,7 +243,6 @@ void Corewar::tick()
                 {
                 case IMMEDIATE:
                     // JMP or FORK to a constant : fail ;-)
-                    m_lProcesses.at(i)->running = false;
                     continue;
                     break;
                 case ADDRESS:
@@ -259,24 +257,43 @@ void Corewar::tick()
                     ip = (ip+value-1) % m_pField->length();
                 else
                 {
-                    Process *proc = new Process;
-                    proc->instructionPointer = (ip+value) % m_pField->length();
-                    proc->owner = owner;
-                    proc->running = true;
-                    proc->name = m_lProcesses.at(i)->name;
-                    m_lProcesses.prepend(proc); i++;
+                    m_aProcesses[i]->instructionPointers.push_back(
+                        (ip+value) % m_pField->length());
                 }
             }
             break;
         }
 
-        if(m_lProcesses.at(i)->running)
-        {
-            // Next instruction
-            ip = (ip+1)%m_pField->length();
+        // Ok, so this thread is still running...
 
-            // Draw instruction pointers
-            m_pField->drawPointer(ip, m_lProcesses.at(i)->owner);
+        // Next instruction
+        ip = (ip+1)%m_pField->length();
+
+        // Draw instruction pointers
+        m_pField->drawPointer(ip, i+1);
+
+        // Put it back in the list
+        m_aProcesses[i]->instructionPointers.push_back(ip);
+    }
+
+    bool finished = true;
+    int running = 0;
+    // finished is true until we find two running processes with different
+    // effective owners
+    for(size_t i = 0; i < m_aProcesses.size(); i++)
+    {
+        std::list<unsigned int>::iterator thread;
+        thread = m_aProcesses[i]->instructionPointers.begin();
+        for(; thread != m_aProcesses[i]->instructionPointers.end(); thread++)
+        {
+            unsigned short owner = m_pField->owner(*thread);
+            if(running == 0)
+                running = owner;
+            else if(owner != running)
+            {
+                finished = false;
+                break;
+            }
         }
     }
 
@@ -287,8 +304,8 @@ void Corewar::tick()
         m_pPaintTimer->stop();
         repaint();
         if(running != 0)
-            QMessageBox::information(this, tr("Game finished"),
-                tr("\"%1\" has won!").arg(m_lProcesses.at(running-1)->name));
+            QMessageBox::information(this, tr("Game finished"), tr("\"%1\" has "
+                "won!").arg(m_aProcesses[running-1]->name.c_str()));
         else
             QMessageBox::information(this, tr("Game finished"),
                 tr("No program survived :("));

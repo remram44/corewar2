@@ -5,6 +5,7 @@
 
 #include <QWidget>
 #include <QPaintEvent>
+#include <list>
 
 class Field : public QWidget {
 
@@ -22,7 +23,7 @@ private:
     unsigned int m_iSize;
     std::vector<Cell> m_aCells;
     std::vector<unsigned short> m_aCellsOwner;
-    QList<Pointer> m_lPointers;
+    std::list<Pointer> m_lPointers;
 
 public:
     Field(unsigned int size);

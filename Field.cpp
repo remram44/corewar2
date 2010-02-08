@@ -33,7 +33,7 @@ Field::Field(unsigned int size)
 void Field::drawPointer(unsigned int pointer, unsigned short owner)
 {
     Pointer p = {pointer, owner};
-    m_lPointers << p;
+    m_lPointers.push_back(p);
 }
 
 void Field::clearPointers()
@@ -56,12 +56,13 @@ void Field::paintEvent(QPaintEvent *event)
     }
 
     painter.setBrush(Qt::NoBrush);
-    for(int i = 0; i < m_lPointers.count(); i++)
+    std::list<Pointer>::iterator pointer = m_lPointers.begin();
+    for(; pointer != m_lPointers.end(); pointer++)
     {
-        unsigned char *color = colors[m_lPointers.at(i).owner];
+        unsigned char *color = colors[pointer->owner];
         painter.setPen(QColor(color[0], color[1], color[2]));
-        unsigned int y = m_lPointers.at(i).pointer/m_iWidth;
-        unsigned int x = m_lPointers.at(i).pointer - y*m_iWidth;
+        unsigned int y = pointer->pointer/m_iWidth;
+        unsigned int x = pointer->pointer - y*m_iWidth;
         painter.drawRect(QRect(x*10, y*10, 10, 10));
     }
 }

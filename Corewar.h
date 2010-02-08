@@ -9,6 +9,8 @@
 #include <QSpinBox>
 #include <QCheckBox>
 #include <QTimer>
+#include <list>
+#include <vector>
 
 class Corewar;
 
@@ -36,10 +38,8 @@ signals:
 
 struct Process {
 
-    unsigned int instructionPointer;
-    unsigned short owner;
-    bool running;
-    QString name;
+    std::list<unsigned int> instructionPointers;
+    std::string name;
 
 };
 
@@ -50,7 +50,7 @@ class Corewar : public QMainWindow {
 private:
     NewGameDialog *m_pNewGameDialog;
     Field *m_pField;
-    QList<Process*> m_lProcesses;
+    std::vector<Process*> m_aProcesses;
     QTimer *m_pTickTimer;
     QTimer *m_pPaintTimer;
 

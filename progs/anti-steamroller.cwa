@@ -1,6 +1,9 @@
-mov $1 #-64
-ife $1 #-65
-jmp #-1
-mov $0 #-65
-mov $0 #-66
-jmp #-5
+mov $1 #-3 ; put the bait DAT 1
+ife $1 #-4 ; check presence of the bait
+jmp #-1    ; if present, keep checking
+mov $0 #-4 ; if overwritten, bomb with DAT 0 to kill the steamroller
+mov $0 #-5 ;     that was probably responsible for that
+mov $0 #-6 ; bomb multiple times because we might have detected with a delay
+mov $0 #-7 ;     since detection uses two instructions, and because of FORKs
+mov $0 #-8 ;     the roller can be moving slowly
+jmp #-8    ; then go back to the start (put a new bait)

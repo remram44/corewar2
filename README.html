@@ -22,7 +22,7 @@ body {
     </ul>
 
     <h2 id="intro">Introduction</h2>
-    <p>Corewar2 is a very simple Corewar clone, written in C++ with <a href="http://qt.nokia.com/">Qt</a>. The language used was created by myself for this purpose and named CWA (for CoreWar Assembly). It's a simple assembly language, with 6 instructions.</p>
+    <p>Corewar2 is a very simple Corewar clone, written in C++ with <a href="http://qt.nokia.com/">Qt</a>. The language used was created by myself for this purpose and named CWA (for CoreWar Assembly). It's a simple assembly language, with 7 instructions.</p>
 
     <h2 id="corewar">Corewar</h2>
     <p>The idea of Corewar is simple: programs fight in a virtual memory arena, the last program running wins. You can make other programs crash by making it execute an invalid instruction (by overwriting its code).</p>
@@ -45,10 +45,12 @@ body {
       <li><code>IFE &lt;a&gt; &lt;b&gt;</code>: Compare <code>a</code> with <code>b</code>. If <code>a</code> is equal to <code>b</code>, the next instruction is executed, else it is skipped.</li>
       <li><code>IFL &lt;src&gt; &lt;dst&gt;</code>: Compare <code>a</code> with <code>b</code>. If <code>a &lt; b</code>, the next instruction is executed, else it is skipped.</li>
       <li><code>JMP &lt;dst&gt;</code>: Jump to the address <code>dst</code>. <code>dst</code> cannot be an immediate value.</li>
+      <li><code>FORK &lt;dst&gt;</code>: Start a thread, which executes at the address <code>dst</code>, while we continue with the next instruction.</li>
     </ul>
 
     <h2 id="rules">Rules</h2>
     <p>A program is terminated if it executes an invalid instruction (for example a <code>DAT</code>, or an instruction with an invalid argument type). Furthermore, a memory cell is considered to belong to the last program which wrote to it. If a program executes a memory cell that doesn't belong to it, it is <em>considered to be</em> the program that wrote it. This means if all remaining programs are executing code from your program, you win.</p>
+    <p>If the <code>FORK</code> instruction is enabled, it allows a program to create multiple threads. However beware that threads are sharing execution time. This means that a program with 3 threads will see each of its thread execute at one third of the speed a of program which never uses the <code>FORK</code> instruction.</p>
 
     <h2 id="examples">Examples</h2>
 
@@ -71,5 +73,16 @@ jmp #-1    ; it's still there, loop
 mov $0 #-5 ; it was overwritten, write two DAT 0 to kill a steamroller
 mov $0 #-6
 jmp #-5    ; then loop</pre>
+
+    <h3>Spammer</h3>
+    <p>For this example, the <code>FORK</code> instruction needs to be enabled. This program sends steamrollers to many memory locations. It may overwrite itself with a steamroller.
+    <pre>add $128 #5 ; increase counters
+add $128 #5
+mov #5 @3   ; copy the steamroller
+fork @3     ; start the steamroller
+jmp #-4     ; loop
+dat 4
+dat 3
+mov #0 #1   ; instruction for the steamroller</pre>
   </body>
 </html>
