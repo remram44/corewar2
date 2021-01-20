@@ -54,7 +54,7 @@ private:
     std::vector<Cell> m_aBytecode;
 
 public:
-    Program(const char *filename, bool forkAllowed) throw(SyntaxError);
+    Program(const char *filename, bool forkAllowed);
     inline const std::vector<Cell> &bytecode() const
     {
         return m_aBytecode;

@@ -16,7 +16,7 @@ const QString &SyntaxError::what() const
     return m_sWhat;
 }
 
-Program::Program(const char *filename, bool forkAllowed) throw(SyntaxError)
+Program::Program(const char *filename, bool forkAllowed)
 {
     // TODO : loading a program
     std::ifstream file(filename, std::ios::in);
